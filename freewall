@@ -1,0 +1,56 @@
+freewall sort
+
+setDataPosition(){
+	let self = this;
+	$('.widget-wrap').each(function(){
+		let _po = $(this).position();
+		let top = Math.ceil(_po.top / self.cellWidth);
+		let left = Math.ceil(_po.left / self.cellHeight);
+		let _widgetId = $(this).attr('widget-id');
+		let _wid = _.find(self.portalService.widgets,{_id:_widgetId});
+		if(_wid){
+			_wid.dataPosition = top+"-"+left;
+		};
+	});
+}
+
+
+
+this.$timeout(function () {
+	if (self.wall) {
+		self.wall = null;
+	}
+	self.wall = new Freewall("#portal-layout-container");
+	self.wall.reset({
+		draggable: self.$filter("hasPortalPrivilege")(self.panel.privileges, 'editPanel'),//权限控制是否允许拖动
+		selector: '.widget-wrap',
+		animate: true,
+		cellW: self.cellWidth,//200 计算所的
+		cellH: self.cellHeight,//325 portal不出滚动条最小高度
+		gutterX: 10,
+		gutterY: 10,
+		onResize: function () {
+			self.wall.refresh();
+		},
+		onBlockDrop: function (e) {
+		    //拖动完后计算data-position
+			self.setDataPosition();
+			//根据data-position 排序
+			self.portalService.widgets = _.sortBy(self.portalService.widgets, "dataPosition");
+			console.log(self.portalService.widgets);
+			//获取排序后的id 和 name 
+			let _ids = _.map(self.portalService.widgets, function(item){
+				return {id: item._id, name: item.title};
+			});
+			//服务端根据排序后的id重新生成顺序
+			self.portalService.updatePanelWidgetPosition(self.panel._id,_ids).then((data) => {
+			}, (err) => {
+			});
+		},
+		onComplete:function(){
+			self.setDataPosition();
+		}
+	});
+	self.wall.fitWidth();
+	$(window).trigger("resize");
+});
